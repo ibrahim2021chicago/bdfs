@@ -1,0 +1,10 @@
+# Byte-compiled files
+**/__pycache__/
+**/**/__pycache__/
+
+# Sensitive data
+.env
+
+# Logs
+logs/
+app/logs/

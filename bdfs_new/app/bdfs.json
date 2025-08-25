@@ -1,0 +1,413 @@
+{
+  "regions": {
+    "uk": {
+      "security": {
+        "ukPersonOnly": {
+          "allow": [
+            "CTSRevRecGSCApproved",
+            "CTSRevRecGSCNoFornApproved"
+          ],
+          "deny": [
+            "CTSRevRecUnrestricted"
+          ]
+        },
+        "ukCitizenOnly": {
+          "allow": [
+            "CTSRevRecGSCNoFornApproved"
+          ],
+          "deny": [
+            "CTSRevRecGSCApproved",
+            "CTSRevRecUnrestricted"
+          ]
+        },
+        "unrestricted": {
+          "allow": [
+            "CTSRevRecGSCApproved",
+            "CTSRevRecGSCNoFornApproved",
+            "CTSRevRecUnrestricted"
+          ],
+          "deny": []
+        }
+      },
+      "groups": {
+        "CTSRevRecGSCApproved": {},
+        "CTSRevRecGSCNoFornApproved": {},
+        "CTSRevRecUnrestricted": {}
+      },
+      "fields": {
+        "Marked GSC": {
+          "var": "isGSC",
+          "type": "bool"
+        },
+        "Marked UK Persons Only": {
+          "var": "ukPersonOnly",
+          "type": "bool",
+          "report": true
+        },
+        "Marked UK Citizen Only": {
+          "var": "ukCitizenOnly",
+          "type": "bool",
+          "report": true
+        }
+      }
+    },
+    "us": {
+      "security": {
+        "usPersonOnly": {
+          "allow": [
+            "CTSRevRecCUIApproved",
+            "CTSRevRecCUINoFornApproved"
+          ],
+          "deny": [
+            "CTSRevRecUnrestricted"
+          ]
+        },
+        "usCitizenOnly": {
+          "allow": [
+            "CTSRevRecCUINoFornApproved"
+          ],
+          "deny": [
+            "CTSRevRecUnrestricted",
+            "CTSRevRecCUIApproved"
+          ]
+        },
+        "unrestricted": {
+          "allow": [
+            "CTSRevRecCUIApproved",
+            "CTSRevRecCUINoFornApproved",
+            "CTSRevRecUnrestricted"
+          ],
+          "deny": []
+        }
+      },
+      "groups": {
+        "CTSRevRecCUIApproved": {},
+        "CTSRevRecCUINoFornApproved": {},
+        "CTSRevRecUnrestricted": {}
+      },
+      "fields": {
+        "Marked CUI-Specific": {
+          "var": "isCUI",
+          "type": "bool"
+        },
+        "Marked US Persons Only": {
+          "var": "usPersonOnly",
+          "type": "bool",
+          "report": true
+        },
+        "Marked US Citizen Only": {
+          "var": "usCitizenOnly",
+          "type": "bool",
+          "report": true
+        },
+        "Marked ITAR/EAR": {
+          "var": "isITAR",
+          "type": "bool"
+        }
+      },
+      "validation_rules": [
+        {
+          "if": "isITAR",
+          "requires": ["usCitizenOnly"],
+          "forbids": ["usPersonOnly"],
+          "message": "ITAR requires US Citizen Only and cannot be US Person Only"
+        },
+        {
+          "if": "isCUI",
+          "requires": ["usCitizenOnly"],
+          "forbids": ["usPersonOnly"],
+          "message": "CUI-Specific requires US Citizen Only and cannot be US Person Only"
+        },
+        {
+          "forbids_both": ["usPersonOnly", "usCitizenOnly"],
+          "message": "Cannot be both US Person Only and US Citizen Only"
+        },
+        {
+          "if": "isReady",
+          "requires": ["isCompleted"],
+          "message": "Ready requires Completed"
+        }
+      ]
+    },
+    "in": {}
+  },
+  "sources": [
+    {
+      "name": "projects_general",
+      "type": "csv",
+      "path": "http://mufs17.belcan.com/dist/ansible/projects.csv",
+      "priority": 1,
+      "region": "us"
+    },
+    {
+      "name": "project_collins",
+      "type": "csv",
+      "path": "http://mufs17.belcan.com/dist/ansible/projects_collins.csv",
+      "priority": 2,
+      "region": "us"
+    },
+    {
+      "name": "project_sikorsky",
+      "type": "csv",
+      "path": "http://mufs17.belcan.com/dist/ansible/projects_sikorsky.csv",
+      "priority": 3,
+      "region": "us"
+    },
+    {
+      "name": "project_pratt",
+      "type": "csv",
+      "path": "http://mufs17.belcan.com/dist/ansible/projects_pratt.csv",
+      "priority": 4,
+      "region": "us"
+    }
+  ],
+  "defaults": {
+    "defaultregion": "us",
+    "globalregion": {},
+    "cache_path": "bdfs_cache.dat",
+    "leaf_expiration": 3600,
+    "logfile": "/tmp/bdfs.log",
+    "bdfs_config": "/usr/belcan/bin/bdfs_config.xml",
+    "smbuser": "beladmin",
+    "smbpass": "badadmin",
+    "smbdomain": "belcan.com",
+    "ldap_dn": "cn=Belcan Unix Admin,OU=CS Resource Accounts,OU=Computer Services,DC=belcan,DC=com",
+    "ldap_server": "mudc03.belcan.com",
+    "defaultgroups": [
+      [
+        "engcontractrev",
+        "rwx"
+      ],
+      [
+        "aetdpa",
+        "rwx"
+      ],
+      [
+        "aetdpaaw",
+        "rwx"
+      ],
+      [
+        "aetdpafge",
+        "rwx"
+      ],
+      [
+        "aetdpafl",
+        "rwx"
+      ],
+      [
+        "aetdpafr",
+        "rwx"
+      ],
+      [
+        "aetdpain",
+        "rwx"
+      ],
+      [
+        "aetdpalx",
+        "rwx"
+      ],
+      [
+        "aetdpaly",
+        "rwx"
+      ],
+      [
+        "aetdpape",
+        "rwx"
+      ],
+      [
+        "aetdpawi",
+        "rwx"
+      ]
+    ]
+  },
+  "customercodes": {
+    "aa": "Archer Aviation",
+    "ab": "Airbus",
+    "ad": "Applied Avionics",
+    "ae": "Aero International",
+    "af": "Aerofab",
+    "ah": "American Honda",
+    "ai": "AIT",
+    "al": "Altec Industries",
+    "am": "Astronics Advanced Electronic Systems",
+    "an": "Astronautics",
+    "ao": "Aerovel",
+    "ap": "Applied Composites",
+    "aq": "Abstract Electronics",
+    "ar": "Aerojet",
+    "as": "Astec",
+    "at": "Altorfer Power Systems",
+    "au": "Aero Products and Services, 'Aero Products and Services JV, LLC'",
+    "av": "AeroVironment",
+    "aw": "A-Connect",
+    "ax": "Aevex Aerospace",
+    "ay": "Avancez Assembly, Avancez LLC, Avancez",
+    "az": "Amazon",
+    "ba": "BAE",
+    "bc": "Bobcat",
+    "be": "BE Aerospace, B/E EDL",
+    "bg": "Belcan Government Solutions",
+    "bl": "Blue Origin",
+    "bn": "Belcan",
+    "bo": "Boeing",
+    "bp": "BishopFox",
+    "bq": "Belcan Consulting Services",
+    "bs": "BioControl Systems",
+    "bu": "Belcan Engineering Services UK",
+    "bv": "Beehive Industries",
+    "bx": "Box",
+    "by": "BlackLine Systems",
+    "ca": "Caterpillar",
+    "cc": "Compact Container Systems, 'Compact Container Systems, LLC'",
+    "ce": "Catalyst Engineering",
+    "cf": "CFD Research",
+    "cl": "Collins Aerospace",
+    "cm": "CMC Electronics, CMC Electronics Aurora",
+    "cn": "Commonwealth Fusion Systems",
+    "co": "Colt Manufacturing",
+    "cr": "Carrier",
+    "ct": "Cognizant Technology Solutions",
+    "cu": "Continental Structural Plastics",
+    "cw": "Curtiss-Wright",
+    "dh": "De Havilland Aircraft of Canada",
+    "dl": "Draper Labs",
+    "dp": "Deposco",
+    "ea": "Eaton",
+    "ed": "Edge Logistics",
+    "ee": "EEI Manufacturing Services",
+    "en": "Eliassen Group",
+    "eo": "Electro Static Technology",
+    "ep": "EaglePicher Technologies",
+    "et": "Electra.aero",
+    "ex": "Extreme Networks",
+    "fa": "Firefly Aerospace",
+    "fb": "Federal Broach",
+    "fd": "Ford Motor Company",
+    "fl": "Federal Mogul",
+    "fm": "Fincantieri Marinette Marine",
+    "gd": "General Dynamics",
+    "ge": "GE",
+    "gf": "Gulfstream Aerospace",
+    "gm": "General Motors",
+    "gs": "GEAVI SC",
+    "gt": "Greenpoint Technologies",
+    "ha": "Haier US Appliance Solutions",
+    "hd": "HDT Global",
+    "he": "Heritage Trust Allison Branch",
+    "hi": "HII Unmanned Systems",
+    "hn": "HERE North America",
+    "hr": "Harley-Davidson",
+    "hw": "Honeywell",
+    "hy": "Hyster-Yale Materials Handling",
+    "id": "Idaho National Labs",
+    "ih": "Intellihot",
+    "im": "Integra Mission Critical",
+    "in": "INSITU",
+    "it": "International Motors",
+    "iu": "Indiana University",
+    "ja": "Janicki",
+    "jd": "John Deere",
+    "kf": "Kung Fu Solutions",
+    "kn": "Kinsmen Group",
+    "ko": "Korry Electronics",
+    "lc": "Lycoming Engines",
+    "ld": "L3 Harris",
+    "le": "Leidos",
+    "lh": "Leach International",
+    "ll": "Lawrence Livermore National Laboratory",
+    "lm": "Lockheed Martin",
+    "ls": "LanguageLine Solutions",
+    "lt": "L3 Harris",
+    "mc": "Mason Controls",
+    "md": "Midstate Manufacturing",
+    "mn": "Magna Decoplas",
+    "mp": "Montana Precision Products",
+    "ms": "MilliporeSigma",
+    "mt": "Merritt",
+    "nd": "Android",
+    "oa": "OverAair",
+    "oc": "Ontic",
+    "od": "Oshkosh Defense",
+    "oi": "Orbit International",
+    "ok": "Orbital ATK",
+    "oo": "OmniOn Power",
+    "pa": "Pursuit Aerospace",
+    "pc": "PCC Structurals",
+    "pg": "Procter and Gamble",
+    "ph": "Parker Hannifin",
+    "pn": "PennState",
+    "po": "PowerSecure",
+    "pp": "Palomar Products",
+    "ps": "PacSci",
+    "pt": "Petersen",
+    "pu": "Pacific Fusion",
+    "pw": "Pratt and Whitney",
+    "qm": "Quality Metalcraft",
+    "ra": "RTX",
+    "rc": "RTM Consulting",
+    "rh": "Rhinestahl, Rhinestahl Corp.",
+    "rl": "Reshape Lifesciences",
+    "rm": "American Rheinmetall Vehicles",
+    "rr": "Rolls Royce",
+    "rt": "RTC Shared Business Services",
+    "sa": "StarFish Medical",
+    "sb": "Saab",
+    "sc": "Spirit AeroSystems",
+    "se": "MRA Systems",
+    "si": "Sikorsky",
+    "sk": "Skyryse",
+    "sl": "Space Information Laboratories",
+    "sn": "Sierra Space",
+    "sp": "Simulator Product Solutions",
+    "sq": "ScioTeq",
+    "sr": "Systems and Technology Research",
+    "ss": "Siemens",
+    "su": "Suttons Creek",
+    "sv": "Solvd, 'Solvd, Inc.'",
+    "sx": "Stratoflex",
+    "ta": "TranStar Aircraft Interiors",
+    "tg": "Triumph Gear Systems",
+    "th": "Thales Defense and Security",
+    "tl": "TLS",
+    "tt": "TT Electronics",
+    "tx": "Textron",
+    "ul": "ULA",
+    "un": "Unison, Unison Industries",
+    "va": "Venus Aerospace",
+    "vi": "Avista",
+    "vo": "Sheltered Wings",
+    "wb": "WBTL, WBTL de Saltillo",
+    "wd": "Woodward",
+    "wf": "Weiler Forestry",
+    "wh": "Whippany",
+    "wr": "Wind River Professional Services",
+    "za": "ZeroAvia",
+    "zk": "ZKW",
+    "zs": "ZSI"
+  },
+  "customer_mapping": {
+    "ra": [
+      "cl",
+      "be",
+      "pw",
+      "rt"
+    ],
+    "ms": [
+      "bs"
+    ],
+    "ge": [
+      "un"
+    ],
+    "bo": [
+      "in"
+    ],
+    "bn": [
+      "bu",
+      "rc",
+      "vi"
+    ],
+    "nd": [
+      "ay"
+    ]
+  }
+}

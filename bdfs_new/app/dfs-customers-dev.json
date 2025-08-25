@@ -1,0 +1,238 @@
+{
+  "dfscustomers": {
+    "global": [
+      {
+        "email": [
+          "jreis@belcan.com",
+          "telmore@belcan.com"
+        ]
+      }
+    ],
+    "location": [
+      {
+        "locname": "Florida EPD",
+        "email": [
+          "rwilkinson@belcan.com",
+          "ematias@belcan.com",
+          "bbartley@belcan.com"
+        ]
+      },
+      {
+        "locname": "Florida Riverside",
+        "email": [
+          "debriggs@belcan.com"
+        ]
+      },
+      {
+        "locname": "Cincinnati",
+        "email": [
+          "dbaker@belcan.com",
+          "debriggs@belcan.com"
+        ]
+      },
+      {
+        "locname": "Lexington",
+        "email": [
+          "jodaniels@belcan.com",
+          "bgodman@belcan.com"
+        ]
+      },
+      {
+        "locname": "Lynn",
+        "email": [
+          "debriggs@belcan.com",
+          "ematias@belcan.com"
+        ]
+      },
+      {
+        "locname": "Indianapolis",
+        "email": [
+          "cmitchell@belcan.com",
+          "jodaniels@belcan.com"
+        ]
+      },
+      {
+        "locname": "Peoria",
+        "email": [
+          "jodaniels@belcan.com",
+          "clight@belcan.com",
+          "cmitchell@belcan.com"
+        ]
+      },
+      {
+        "locname": "Middle River",
+        "email": [
+          "debriggs@belcan.com"
+        ]
+      },
+      {
+        "locname": "Raleigh",
+        "email": [
+          "clight@belcan.com",
+          "cmitchell@belcan.com"
+        ]
+      },
+      {
+        "locname": "Tempe",
+        "email": [
+          "cmitchell@belcan.com"
+        ]
+      },
+      {
+        "locname": "Grand Rapids",
+        "email": [
+          "debriggs@belcan.com"
+        ]
+      },
+      {
+        "locname": "Greenville",
+        "email": [
+          "debriggs@belcan.com",
+          "ematias@belcan.com"
+        ]
+      },
+      {
+        "locname": "Windsor",
+        "email": [
+          "ematias@belcan.com",
+          "stdelane@belcan.com"
+        ]
+      },
+      {
+        "locname": "Oldsmar",
+        "email": [
+          "cmitchell@belcan.com",
+          "mrodgers@belcan.com"
+        ]
+      }
+    ],
+    "customer": [
+      {
+        "location": "Cincinnati",
+        "code": "mugeus",
+        "contract": [
+          {
+            "path": "/export/data/contract_ge01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_ge01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "muccus",
+        "contract": [
+          {
+            "path": "/export/data/contract_cc01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_cc01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "muayus",
+        "contract": [
+          {
+            "path": "/export/data/contract_ay01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_ay01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "mubeus",
+        "contract": [
+          {
+            "path": "/export/data/contract_be01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_be01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "murhus",
+        "contract": [
+          {
+            "path": "/export/data/contract_rh01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_rh01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "muayus",
+        "contract": [
+          {
+            "path": "/export/data/contract_ay01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_ay01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "dbunuk",
+        "contract": [
+          {
+            "path": "/export/data/contract_un01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_un01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "dbauuk",
+        "contract": [
+          {
+            "path": "/export/data/contract_au01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_au01"
+          }
+        ]
+      },
+      {
+        "location": "Cincinnati",
+        "code": "dbcmuk",
+        "contract": [
+          {
+            "path": "/export/data/contract_cm01"
+          }
+        ],
+        "opportunity": [
+          {
+            "path": "/export/data/opportunity_cm01"
+          }
+        ]
+      }
+    ]
+  }
+}
