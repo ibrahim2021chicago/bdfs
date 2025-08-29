@@ -12,7 +12,8 @@ def rsync_folder(opp_id, country, matched_customer_list):
                 if isinstance(entry, dict) and 'path' in entry and entry['path']:
                     logger.info(f"Syncing {sync_type} folders for customer: {matched_customer_list['code']}, {matched_customer_list[sync_type]}")
                     cmd = [
-                        "rsync", "-avz", "--no-group", "-O", "--no-perms",
+                        # "rsync", "-avz", "--no-group", "-O", "--no-perms",
+                        "rsync", "-avz", "--acls", "--xattrs",
                         "-e", f"ssh -p {FILE_SERVERS['port']} -i {FILE_SERVERS['key']}",
                         f"{CENTRAL_SERVER['base_path']}{sync_type}/{opp_id}",
                         f"{FILE_SERVERS['username']}@{FILE_SERVERS[country]}:{entry['path']}/"

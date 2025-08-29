@@ -30,5 +30,10 @@ FILE_SERVERS = {
 }
 CENTRAL_SERVER = {
     'base_path': os.getenv('CENTRAL_SERVER_BASE_PATH'),
-    # 'contract_base_path': os.getenv('CONTRACT_BASE_PATH')
+}
+LDAP_CONFIG = {
+    'server': os.getenv('LDAP_SERVER'),
+    'bind_dn': os.getenv('LDAP_BIND_DN'),
+    'ldap_pass': os.getenv('LDAP_PASSWORD'),
+    'group_dn': os.getenv('GROUP_DN')
 }

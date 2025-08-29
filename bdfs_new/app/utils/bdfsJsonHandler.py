@@ -13,3 +13,7 @@ def get_customer_code(customer_full_name):
         if customer_full_name.lower() in value.lower():
             return key
     return None
+
+def get_groups_perms(region, classification):
+    default_groups = bdfs.get('defaults', {}).get('defaultgroups', [])
+    return [{'group': g, 'perm': p} for g, p in default_groups]
