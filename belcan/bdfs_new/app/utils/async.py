@@ -37,7 +37,7 @@ async def fetch(session, url, payload, retries=5, backoff=2):
                 return None
             await asyncio.sleep(backoff * attempt)
 
-async def process_employee(session, associate_id):
+async def process_employee(session, associate_id, semaphore):
     async with semaphore:
         try:
             emp_payload = {"empid": associate_id}
@@ -54,10 +54,10 @@ async def process_employee(session, associate_id):
             logger.error(f"Error processing associate {associate_id}: {e}")
 
 async def main():
-    # Note: get_associate_ids is synchronous so run in thread pool
     associate_ids = await asyncio.to_thread(get_associate_ids)
+    semaphore = asyncio.Semaphore(20)  # create semaphore inside main loop
     async with aiohttp.ClientSession() as session:
-        tasks = [process_employee(session, aid) for aid in associate_ids]
+        tasks = [process_employee(session, aid, semaphore) for aid in associate_ids]
         await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
