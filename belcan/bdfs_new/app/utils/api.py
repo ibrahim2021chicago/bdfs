@@ -1,77 +1,84 @@
-import time
 import pyodbc
 import requests
-from requests.exceptions import RequestException, ProxyError, ConnectionError
-from config import API_CONFIG  # Import the API_CONFIG dictionary
-from loggerGen import setup_logger
+import json
+import logging
+import time
+from requests.exceptions import ProxyError, ConnectionError, RequestException
+import concurrent.futures
+from utils.config import API_CONFIG, CONN_STRING
 
-logger = setup_logger()
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
 
-RETRIES = 5
-BACKOFF = 2
-REQ_DELAY = 0.5
+# No proxy used
+proxies = None
 
-def api_post(url, payload, retries=RETRIES, backoff=BACKOFF):
-    headers = API_CONFIG.get('headers', {'Content-Type': 'application/json; charset=utf-8'})  # Use headers from config or default
-    try:
-        for attempt in range(1, retries + 1):
-            try:
-                with requests.Session() as session:
-                    logger.info(f"POST to {url} with payload {payload}")
-                    resp = session.post(url, headers=headers, json=payload, timeout=15)
-                    logger.info(f"[{resp.status_code}]: {resp.text}")
-                    resp.raise_for_status()
-                    return resp.json()
-            except (ProxyError, ConnectionError) as e:
-                logger.warning(f"Attempt {attempt} failed: {e}")
-                if attempt == retries:
-                    logger.error(f"Max attempts for payload {payload}")
-                    return None
-                time.sleep(backoff * attempt)
-            except RequestException as e:
-                logger.error(f"Request failed: {e}")
+# Headers from config
+headers = {
+    "client-id": API_CONFIG['client_id'],
+    "client-secret": API_CONFIG['client_secret'],
+    "content-type": API_CONFIG['content_type']
+}
+
+url = API_CONFIG['url']
+
+# Configurable settings
+MAX_WORKERS = API_CONFIG.get('max_workers', 20)
+RETRIES = API_CONFIG.get('retries', 5)
+BACKOFF = API_CONFIG.get('backoff', 2)
+REQ_DELAY = API_CONFIG.get('req_delay', 0.5)
+
+def api_post_with_retries(payload, retries=RETRIES, backoff=BACKOFF):
+    for attempt in range(1, retries + 1):
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=15, proxies=proxies)
+            logger.info(f"API response for payload {payload}: {response.status_code} {response.text}")
+            response.raise_for_status()
+            return response.json()
+        except (ProxyError, ConnectionError) as e:
+            logger.warning(f"Attempt {attempt} failed due to connection error: {e}")
+            if attempt == retries:
+                logger.error(f"All {retries} retry attempts failed for payload: {payload}")
                 return None
-    except Exception as e:
-        logger.error(f"Unhandled error in api_post: {e}")
-        return None
-    return None
+            time.sleep(backoff * attempt)
+        except RequestException as e:
+            logger.error(f"API request failed for payload {payload}: {e}")
+            return None
 
-def process_associates():
+def process_employee(associate_id):
     try:
-        conn_string = API_CONFIG.get('conn_string', None)
-        if not conn_string:
-            logger.error("Connection string is missing from API_CONFIG")
-            return
+        emp_payload = {"empid": associate_id, "type": "employee"}
+        emp_response = api_post_with_retries(emp_payload)
+        emp_status = emp_response.get("Associate_Status") if emp_response else None
 
-        with pyodbc.connect(conn_string) as conn, conn.cursor() as cursor:
-            cursor.execute("SELECT DISTINCT Associate_ID FROM Cognizant.dbo.Resources")
-            associate_ids = [row[0] for row in cursor.fetchall()]
+        folder_payload = {"empid": associate_id, "type": "folder"}
+        folder_response = api_post_with_retries(folder_payload)
+        classification = folder_response.get("ProjectTechnicalDataAccessEligibility") if folder_response else None
+
+        logger.info(f"{associate_id} - Status: {emp_status}, Classification: {classification}")
+        print(f"Associate_ID: {associate_id}, Status: {emp_status}, Classification: {classification}")
     except Exception as e:
-        logger.error(f"DB error: {e}")
-        return
+        logger.error(f"Error processing associate {associate_id}: {e}")
 
-    employee_url = API_CONFIG.get('employee_url')
-    folder_url = API_CONFIG.get('folder_url')
-    if not employee_url or not folder_url:
-        logger.error("Employee or Folder URL missing in API_CONFIG")
-        return
+def main():
+    conn = None
+    cursor = None
+    try:
+        conn = pyodbc.connect(CONN_STRING)
+        cursor = conn.cursor()
+        cursor.execute("SELECT Associate_ID FROM your_table")  # Replace with actual table name
+        associate_ids = [row[0] for row in cursor.fetchall()]
 
-    for ids, associate_id in enumerate(associate_ids, 1):
-        payload = {"empid": associate_id}
-        emp_resp = api_post(employee_url, payload)
-        emp_status = emp_resp.get("Associate_Status") if emp_resp else "Unavailable"
-
-        folder_resp = api_post(folder_url, payload)
-        eligibility = folder_resp.get("ProjectTechnicalDataAccessEligibility") if folder_resp else "Unavailable"
-
-        logger.info(
-            f"{associate_id} - Employee Status: {emp_status} | Folder Eligibility: {eligibility}"
-        )
-        print(
-            f"{associate_id} - Employee Status: {emp_status} | Folder Eligibility: {eligibility}"
-        )
-
-        time.sleep(REQ_DELAY)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            executor.map(process_employee, associate_ids)
+    except Exception as e:
+        logger.error(f"Database or unexpected error occurred: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 if __name__ == "__main__":
-    process_associates()
+    main()
