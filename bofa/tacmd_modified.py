@@ -1,3 +1,4 @@
+#!/usr/libexec/platform-python
 import logging
 import sys
 import socket
@@ -7,6 +8,10 @@ import os
 import shlex
 from pathlib import Path
 
+sys.path.append('/banktools/itm6/BofAScripts/pylib/usr/local/lib/python3.6/site-packages/')
+from bofautils.basicpyt import *
+from bofautils.authentication import *
+
 class Tacmd:
     def __init__(self, mode="hub", host=None, logref='basic_logger'):
         """
@@ -15,13 +20,13 @@ class Tacmd:
         """
         self.mode = mode.lower()
         self.host = host if host else socket.gethostname()
-        Path(f'/banktools/itm6/tmp/{self.host}/.ptacmd').mkdir(parents=True, exist_ok=True)
+        self.session_home = f"/banktools/itm6/tmp/{self.host}/.ptacmd"
+        Path(self.session_home).mkdir(parents=True, exist_ok=True)
         self.log = logging.getLogger(logref)
         self.cacheFile = f"/dev/shm/{self.host}.n.cache"
-        self.string_check = "<ISTATE>True"
-        self.string_check2 = "<ASTATE>True"
+        self.string_check = "True"
+        self.string_check2 = "True"
 
-        # Determine tacmd binary and login command by mode
         if self.mode == "teps":
             tacmd_candidates = ["/banktools/itm6/TEP_HOME/bin/tacmd", "/banktools/itm6/bin/tacmd"]
             self.login_cmd = "tepslogin"
@@ -37,9 +42,6 @@ class Tacmd:
             self.log.critical("tacmd command not found on server.")
             raise FileNotFoundError("tacmd binary not found.")
 
-        # Set HOME path to be per-host for session safety
-        self.session_home = f"/banktools/itm6/tmp/{self.host}/.ptacmd"
-
     def login(self, user, password, timeout=600):
         args = [
             self.TACMD_DIR,
@@ -50,8 +52,7 @@ class Tacmd:
             "-t", str(timeout)
         ]
         try:
-            self.log.info(f"Running: {' '.join(args)}")
-            # Set session HOME to prevent cache collisions
+            self.log.info(f"Running login: {' '.join(args)}")
             env = dict(os.environ, HOME=self.session_home)
             p = run(args, env=env, stdout=PIPE, stderr=PIPE, encoding='ascii', timeout=timeout)
             if p.returncode == 0:
@@ -69,8 +70,8 @@ class Tacmd:
 
     def command(self, cmdargs, timeout=600, retry=0):
         """
-        Runs an arbitrary tacmd CLI command (post-login).
-        Adds smart retry logic only for HUB mode.
+        Runs arbitrary tacmd CLI command (post-login).
+        Smart retry logic only for HUB.
         """
         args = shlex.split(cmdargs)
         args.insert(0, self.TACMD_DIR)
@@ -84,12 +85,10 @@ class Tacmd:
             else:
                 # Only apply smart retry logic for HUB (not TEPS)
                 if self.mode == "hub" and retry < 1:
-                    # Advanced HUB fallback matching:
                     hub_fail_patterns = ["secondary hub", "connect to a hub monitoring", "unexpected system error"]
                     if any(pattern in output.lower() for pattern in hub_fail_patterns):
                         self.log.warning(f"Retrying HUB login and retrying command after error: {output}")
-                        # You could implement fallback host logic here if needed
-                        self.login(user="hubuser", password="hubpass")  # Supply correct credentials
+                        self.login(user="hubuser", password="hubpass")
                         return self.command(cmdargs, timeout, retry=retry+1)
                 self.log.error(f"Command failed: [{p.returncode}] {output}")
                 return p.returncode, output
@@ -115,11 +114,26 @@ if __name__ == "__main__":
     parser.add_argument('--user', required=True)
     parser.add_argument('--password', required=True)
     parser.add_argument('--command', default=None, help='extra tacmd CLI command to run (post-login)')
-
     args = parser.parse_args()
+
     tacmd = Tacmd(mode=args.mode, host=args.host)
     r, o = tacmd.login(user=args.user, password=args.password)
     print(f"Login result: [{r}] {o}")
     if args.command:
         r2, o2 = tacmd.command(args.command)
         print(f"Command result: [{r2}] {o2}")
+
+## HUB Login Test
+# python3 tacmd_modified_2.py --mode hub --host hub.example.com --user hubuser --password hubpass
+
+## TEPS Login Test
+# python3 tacmd_modified_2.py --mode teps --host teps.example.com --user tepadmin --password teppass
+
+## Run a tacmd subcommand after login
+# python3 tacmd_modified_2.py --mode hub --host hub.example.com --user hubuser --password hubpass --command "listSystems"
+
+## Run TEPS specific command
+# python3 tacmd_modified_2.py --mode teps --host teps.example.com --user tepadmin --password teppass --command "viewAgent -t NT"
+
+## Run any custom command
+# python3 tacmd_modified_2.py --mode hub --host hub.example.com --user hubuser --password hubpass --command "getNodeList"
