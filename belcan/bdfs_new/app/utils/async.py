@@ -7,11 +7,9 @@ from loggerGen import setup_logger
 
 logger = setup_logger()
 
-# --- Endpoint URLs ---
-EMPLOYEE_URL = "https://bge-cognizant-hcm-exapi-tst.us-e2.cloudhub.io/api/v1/4537/GetAssociateDetails"
-FOLDER_URL = "https://bge-cognizant-hcm-exapi-tst.us-e2.cloudhub.io/api/v1/28/HCM/Belcan"
-
-HEADERS = API_CONFIG['headers']  # Set your confidential headers here
+EMPLOYEE_URL = API_CONFIG['employee_url']
+FOLDER_URL = API_CONFIG['folder_url']
+HEADERS = API_CONFIG['headers']
 
 semaphore = asyncio.Semaphore(20)
 
@@ -29,13 +27,13 @@ async def fetch(session, url, payload, retries=5, backoff=2):
         try:
             async with session.post(url, headers=HEADERS, json=payload, timeout=15) as response:
                 resp_text = await response.text()
-                logger.info(f"API Response for {payload} -> {url}: {response.status} {resp_text}")
+                logger.info(f"API Response for payload {payload} @ {url}: {response.status} {resp_text}")
                 response.raise_for_status()
                 return await response.json()
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logger.warning(f"Attempt {attempt} failed for {payload} @ {url}: {e}")
+            logger.warning(f"Attempt {attempt} failed for payload {payload}: {e}")
             if attempt == retries:
-                logger.error(f"All {retries} retry attempts failed for payload: {payload} @ {url}")
+                logger.error(f"All {retries} retry attempts failed for payload: {payload}")
                 return None
             await asyncio.sleep(backoff * attempt)
 
@@ -56,6 +54,7 @@ async def process_employee(session, associate_id):
             logger.error(f"Error processing associate {associate_id}: {e}")
 
 async def main():
+    # Note: get_associate_ids is synchronous so run in thread pool
     associate_ids = await asyncio.to_thread(get_associate_ids)
     async with aiohttp.ClientSession() as session:
         tasks = [process_employee(session, aid) for aid in associate_ids]
