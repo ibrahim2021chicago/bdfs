@@ -2,6 +2,8 @@ import os
 from utils.loggerGen import setup_logger
 from utils.config import CENTRAL_SERVER
 from utils.sync_folder import rsync_folder
+from utils.ldapConn import create_ad_group
+from utils.setPerms import set_opp_acl
 from utils.setPerms import set_local_acls
 from utils.bdfsJsonHandler import get_groups_perms
 
@@ -15,6 +17,7 @@ def create_folder_on_local(opp_id, region, classification):
         folder_path = os.path.join(parentPath, opp_id)
         os.makedirs(folder_path, exist_ok=True)
         logger.info(f"Opportunity Folder created: {folder_path}")
+        set_opp_acl(opp_id, folder_path)
     except Exception as e:
         logger.error(f"An error occurred while creating folders: {e}")
 
@@ -30,4 +33,3 @@ def create_folder_on_local(opp_id, region, classification):
         set_local_acls(contract_folder, group_perms)
     except Exception as e:
         logger.error(f"Failed to create contract folder for {opp_id}: {e}")
-

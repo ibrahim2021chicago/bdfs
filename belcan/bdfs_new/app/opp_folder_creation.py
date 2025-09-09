@@ -8,8 +8,7 @@ from utils.loggerGen import setup_logger
 from utils.createFolder import create_folder_on_local
 from utils.sync_folder import rsync_folder
 from utils.bdfsJsonHandler import get_customer_code
-from utils.ldapConn import connect_ldap
-from utils.ldapConn import create_ad_group
+from utils.sendMail import send_mail
 
 with open('dfs-customers-dev.json', 'r') as file:
     config = json.load(file)
@@ -43,11 +42,17 @@ try:
                 country = None
                 logger.warning(f"Unknown contract classification: {classification}")
             create_folder_on_local(opp_id, region, classification)
+            
+            send_mail(
+                subject=f"NOTICE | New Opportunity {opp_id} has been created and is ready for use",
+                body=f"NOTICE | New Opportunity {opp_id} has been created and is ready for use",
+                to_addr="imohammed@belcan.com"
+            )
+
             cust_initials = get_customer_code(cust_name)
             cust_code = f"{region or ''}{cust_initials}{country or ''}"
             codes = [item['code'] for item in customer_config]
             matched_customer = next((item for item in customer_config if item['code'] == cust_code), None)
-            create_ad_group(opp_id)
             rsync_folder(opp_id, country, matched_customer)
 except pyodbc.Error as e:
     logger.error(f"Database error: {e}")
@@ -58,5 +63,3 @@ finally:
         cursor.close()
     if conn:
         conn.close()
-
-

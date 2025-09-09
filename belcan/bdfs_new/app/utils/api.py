@@ -15,9 +15,9 @@ EMPLOYEE_URL = API_CONFIG['employee_url']
 FOLDER_URL = API_CONFIG['folder_url']
 
 HEADERS = {
-    'client-id': API_CONFIG['client_id'],
-    'client-secret': API_CONFIG['client_secret'],
-    'content-type': API_CONFIG['content-type']
+    'client_id': API_CONFIG['client_id'],
+    'client_secret': API_CONFIG['client_secret'],
+    'Content-Type': API_CONFIG['Content-Type']
 }
 
 def api_post(url, payload, retries=RETRIES, backoff=BACKOFF):
@@ -25,7 +25,7 @@ def api_post(url, payload, retries=RETRIES, backoff=BACKOFF):
         with requests.Session() as session:
             for attempt in range(1, retries + 1):
                 try:
-                    logger.info(f"POST to {url} with payload {payload}")
+                    #logger.info(f"POST to {url} with payload {payload}")
                     resp = session.post(url, headers=HEADERS, json=payload, timeout=15)
                     logger.info(f"[{resp.status_code}]: {resp.text}")
                     resp.raise_for_status()
@@ -53,7 +53,7 @@ def process_associates():
         return
 
     for associate_id in associate_ids:
-        payload = {"empid": associate_id}
+        payload = {"emplid": associate_id}
 
         emp_resp = api_post(EMPLOYEE_URL, payload)
         emp_status = emp_resp.get("Associate_Status") if emp_resp else "Unavailable"

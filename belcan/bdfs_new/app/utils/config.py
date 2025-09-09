@@ -3,6 +3,14 @@ import os
 
 load_dotenv()
 
+API_CONFIG = {
+    'employee_url': os.getenv('EMPLOYEE_URL'),
+    'folder_url': os.getenv('FOLDER_URL'),
+    'client_id': os.getenv('CLIENT_ID'),
+    'client_secret': os.getenv('CLIENT_SECRET'),
+    'Content-Type': os.getenv('CONTENT_TYPE', 'application/json; charset=utf-8')
+}
+
 DB_CONFIG = {
     'driver': os.getenv('DB_DRIVER'),
     'server': os.getenv('DB_SERVER'),
@@ -37,3 +45,10 @@ LDAP_CONFIG = {
     'ldap_pass': os.getenv('LDAP_PASSWORD'),
     'group_dn': os.getenv('GROUP_DN')
 }
+SMTP_CONFIG = {
+    'server': os.getenv('SMTP_SERVER'),
+    'port': int(os.getenv('SMTP_PORT', 25)),
+    'username': os.getenv('SMTP_USERNAME'),
+    'password': os.getenv('SMTP_PASSWORD')
+}
+

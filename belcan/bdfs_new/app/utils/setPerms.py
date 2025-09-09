@@ -25,5 +25,5 @@ def set_opp_acl(opp_id, opp_folder, perms="rwx"):
         return False
     group_perms = [{'group': opp_id, 'perm': perms}]
     set_local_acls(opp_folder, group_perms)
-    print(f"Set ACL {perms} for AD group {opp_id} on {opp_folder}")
+    logger.info(f"Set ACL {perms} for AD group {opp_id} on {opp_folder}")
     return True
