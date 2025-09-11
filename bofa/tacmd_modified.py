@@ -13,16 +13,21 @@ from bofautils.basicpyt import *
 from bofautils.authentication import *
 
 class Tacmd:
-    def __init__(self, logref='basic_logger'):
+    def __init__(self, logref='basic_logger', hostname=None):
         # Create logger
         self.log = logging.getLogger(logref)
-        self.hostname = socket.gethostname()
+        self.hostname = hostname or socket.gethostname()
         self.session_home = f"/banktools/itm6/tmp/{self.hostname}/.ptacmd"
         Path(self.session_home).mkdir(parents=True, exist_ok=True)
         self.cacheFile = "/dev/shm/tepadmin.acache"
         self.string_check = "<ISTATE>True"
         self.string_check2 = "<ASTATE>True"
         self.setHub()
+    
+    def setHostname(self, hostname):
+        self.hostname = hostname
+        self.session_home = f"/banktools/itm6/tmp/{self.hostname}/.ptacmd"
+        Path(self.session_home).mkdir(parents=True, exist_ok=True)
 
     def setHub(self):
         if os.path.isfile("/banktools/itm6/HUB_HOME/bin/tacmd"):
@@ -84,7 +89,7 @@ class Tacmd:
                                         match = pattern.match(line)
                                         if match:
                                             lBHTEM = match.group("BHTEM")
-                                            p = run([self.TACMD_DIR, 'login', '-stdin'], env=dict(os.environ, HOME=self.session_home), stdout=PIPE,stderr=PIPE,
+                                            p = run([self.TACMD_DIR, self.login_cmd, '-stdin'], env=dict(os.environ, HOME=self.session_home), stdout=PIPE,stderr=PIPE,
                                                 input=f"-s {lBHTEM} -u {new_user} -p {password}\n", encoding='ascii', timeout=600)
                                             if p.returncode == 0:
                                                 self.log.info(p.stdout)
@@ -110,7 +115,7 @@ class Tacmd:
         try:
             args = shlex.split(cmdargs)
             args.insert(0,self.TACMD_DIR)
-            p = run(args, env=dict(os.environ, HOME="/banktools/itm6/tmp/.ptacmd"), stdout=PIPE, stderr=PIPE,
+            p = run(args, env=dict(os.environ, HOME=self.session_home), stdout=PIPE, stderr=PIPE,
                     input=f'y\n', encoding='ascii',timeout=600)
             if p.returncode == 0:
                 self.log.info(p.stdout)
