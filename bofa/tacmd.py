@@ -15,33 +15,17 @@ from bofautils.authentication import *
 class Tacmd:
     def __init__(self, logref='basic_logger'):
         # Create logger
+        Path("/banktools/itm6/tmp/.ptacmd").mkdir(parents=True, exist_ok=True)
         self.log = logging.getLogger(logref)
-        self.hostname = socket.gethostname()
-        self.session_home = f"/banktools/itm6/tmp/{self.hostname}/.ptacmd"
-        Path(self.session_home).mkdir(parents=True, exist_ok=True)
         self.cacheFile = "/dev/shm/tepadmin.acache"
         self.string_check = "<ISTATE>True"
         self.string_check2 = "<ASTATE>True"
-        self.setHub()
-
-    def setHub(self):
         if os.path.isfile("/banktools/itm6/HUB_HOME/bin/tacmd"):
             self.TACMD_DIR = "/banktools/itm6/HUB_HOME/bin/tacmd"
         elif os.path.isfile("/banktools/itm6/bin/tacmd"):
             self.TACMD_DIR = "/banktools/itm6/bin/tacmd"
         else:
             self.log.critical("tacmd command not found on server.")
-        self.login_cmd = "login"
-    
-    def setTeps(self):
-        if os.path.isfile("/banktools/itm6/TEP_HOME/bin/tacmd"):
-            self.TACMD_DIR = "/banktools/itm6/TEP_HOME/bin/tacmd"
-        elif os.path.isfile("/banktools/itm6/bin/tacmd"):
-            self.TACMD_DIR = "/banktools/itm6/bin/tacmd"
-        else:
-            self.log.critical("TEPS tacmd command not found on server.")
-            raise FileNotFoundError("TEPS tacmd command not found.")
-        self.login_cmd = "tepslogin"
 
     def login(self):
         try:
@@ -69,28 +53,27 @@ class Tacmd:
                     self.log.error(f"Unable to use encrypt_decrypt module - Error : {e}")
                     return None, None
                 try:
-                    p = run([self.TACMD_DIR, self.login_cmd, '-stdin'], env=dict(os.environ, HOME=self.session_home), stdout=PIPE, stderr=PIPE,
-                        input=f'-s {self.hostname} -u {new_user} -p {password}\n', encoding='ascii', timeout=600)
+                    p = run([self.TACMD_DIR, 'login', '-stdin'], env=dict(os.environ, HOME="/banktools/itm6/tmp/.ptacmd"), stdout=PIPE, stderr=PIPE,
+                        input=f'-s {socket.gethostname()} -u {new_user} -p {password}\n', encoding='ascii', timeout=600)
                     if p.returncode == 0:
                         self.log.info(p.stdout)
                     else:
-                        if self.login_cmd == "login":
-                            matches = ["secondary hub", "connect to a hub monitoring", "unexpected system error"]
+                        matches = ["secondary hub", "connect to a hub monitoring", "unexpected system error"]
 
-                            if any(x in p.stdout.lower() + p.stderr.lower() for x in matches):
-                                if os.path.exists("/banktools/itm6/HUB_HOME/config/.ConfigData/kmsenv"):
-                                    pattern = re.compile("^hub_.*?\|MIRROR\|(?P<BHTEM>.*?)\|")
-                                    for line in open("/banktools/itm6/HUB_HOME/config/.ConfigData/kmsenv", "r").readlines():
-                                        match = pattern.match(line)
-                                        if match:
-                                            lBHTEM = match.group("BHTEM")
-                                            p = run([self.TACMD_DIR, 'login', '-stdin'], env=dict(os.environ, HOME=self.session_home), stdout=PIPE,stderr=PIPE,
-                                                input=f"-s {lBHTEM} -u {new_user} -p {password}\n", encoding='ascii', timeout=600)
-                                            if p.returncode == 0:
-                                                self.log.info(p.stdout)
-                                            else:
-                                                self.log.info(p.stdout + p.stderr)
-                                                return p.stdout + p.stderr
+                        if any(x in p.stdout.lower() + p.stderr.lower() for x in matches):
+                            if os.path.exists("/banktools/itm6/HUB_HOME/config/.ConfigData/kmsenv"):
+                                pattern = re.compile("^hub_.*?\|MIRROR\|(?P<BHTEM>.*?)\|")
+                                for line in open("/banktools/itm6/HUB_HOME/config/.ConfigData/kmsenv", "r").readlines():
+                                    match = pattern.match(line)
+                                    if match:
+                                        lBHTEM = match.group("BHTEM")
+                                        p = run([self.TACMD_DIR, 'login', '-stdin'], env=dict(os.environ, HOME="/banktools/itm6/tmp/.ptacmd"), stdout=PIPE,stderr=PIPE,
+                                            input=f"-s {lBHTEM} -u {new_user} -p {password}\n", encoding='ascii', timeout=600)
+                                        if p.returncode == 0:
+                                            self.log.info(p.stdout)
+                                        else:
+                                            self.log.info(p.stdout + p.stderr)
+                                            return p.stdout + p.stderr
                         self.log.info(p.stdout + p.stderr)
                         return p.stdout + p.stderr
                 except subprocess.TimeoutExpired:
