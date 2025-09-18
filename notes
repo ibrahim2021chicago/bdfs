@@ -1,6 +1,0 @@
-awk -F '=' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); if ($2 ~ /^[0-9]+$/ && $2 > 0) print}' | wc -l
-
-awk -F '=' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); if ($2 ~ /^[0-9]+$/ && $2 > 0) c++} END{print c}'
-
-awk -F '=' '/Predictive Failure Count/ {if (match($2,/[0-9]+/)) if (substr($2,RSTART,RLENGTH)+0 > 0) c++} END{print c}'
-
