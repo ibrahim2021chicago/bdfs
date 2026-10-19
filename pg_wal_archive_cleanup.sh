@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PostgreSQL WAL archive cleanup (hardened version, v3)
+# PostgreSQL WAL archive cleanup (hardened version, v4)
 # Designed for Patroni PostgreSQL HA:
 #   cgnmssql01 = Primary/Leader
 #   munmssql01 = Standby/Replica
@@ -26,7 +26,7 @@ cd / || exit 1
 
 ARCHIVE_DIR="/var/lib/pgsql/archive"
 PGDATA_DIR="/var/lib/pgsql/data"
-PATRONI_API="${PATRONI_API:-http://127.0.0.1:8008/cluster}"   # override: PATRONI_API=http://<leader-ip>:8008/cluster
+PATRONI_API="${PATRONI_API:-}"   # empty = auto-detect (127.0.0.1, then this node's IPv4 addresses); or set PATRONI_API=http://<ip>:8008/cluster
 CURL_OPTS="${CURL_OPTS:-}"                                         # e.g. CURL_OPTS=-k for self-signed HTTPS
 LOG_FILE="/var/log/pg_wal_archive_cleanup.log"
 LOCK_FILE="/var/run/pg_wal_archive_cleanup.lock"
@@ -111,6 +111,36 @@ apply_age_guard()
         FINAL_BOUNDARY="$proposed"
         log "Age guard (${MIN_AGE_HOURS}h) not limiting; boundary stays $FINAL_BOUNDARY"
     fi
+}
+
+# Find the Patroni REST API on this node and load the cluster JSON into
+# CLUSTER_JSON. If PATRONI_API is set, only that URL is tried. Otherwise
+# tries 127.0.0.1 and then each local IPv4 address (Patroni often listens
+# on the node IP only, and the leader can move between nodes).
+fetch_cluster_json()
+{
+    local candidates url ip
+
+    if [ -n "$PATRONI_API" ]; then
+        candidates="$PATRONI_API"
+    else
+        candidates="http://127.0.0.1:8008/cluster"
+        for ip in $(hostname -I 2>/dev/null); do
+            [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
+                candidates="$candidates http://$ip:8008/cluster"
+        done
+    fi
+
+    for url in $candidates; do
+        CLUSTER_JSON=$(curl -fsS $CURL_OPTS --max-time 10 "$url" 2>/dev/null)
+        if [ -n "$CLUSTER_JSON" ]; then
+            log "Patroni API: $url"
+            return 0
+        fi
+    done
+
+    log "Patroni API not reachable. Tried: $candidates"
+    return 1
 }
 
 # ------------------------------------------------------------
@@ -220,8 +250,8 @@ else
     # Get Patroni cluster information.
     # --------------------------------------------------------
 
-    CLUSTER_JSON=$(curl -fsS $CURL_OPTS --max-time 10 "$PATRONI_API") ||
-        fail "Unable to obtain Patroni cluster information."
+    fetch_cluster_json ||
+        fail "Unable to obtain Patroni cluster information. Set PATRONI_API (and CURL_OPTS for HTTPS) explicitly."
 
     # Evaluate ALL replicas (role replica / sync_standby):
     #   - every one must be streaming/running with replay_lsn,
