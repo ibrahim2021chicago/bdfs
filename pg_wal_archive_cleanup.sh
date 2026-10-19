@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PostgreSQL WAL archive cleanup (hardened version, v4)
+# PostgreSQL WAL archive cleanup (hardened version, v5)
 # Designed for Patroni PostgreSQL HA:
 #   cgnmssql01 = Primary/Leader
 #   munmssql01 = Standby/Replica
@@ -20,16 +20,19 @@
 
 set -u
 
+# Byte-wise string comparison everywhere (WAL names are compared as strings).
+export LC_ALL=C
+
 # Start from / so "sudo -u postgres" never hits a permission error
 # on the caller's home directory.
 cd / || exit 1
 
-ARCHIVE_DIR="/var/lib/pgsql/archive"
-PGDATA_DIR="/var/lib/pgsql/data"
+ARCHIVE_DIR="${ARCHIVE_DIR:-/var/lib/pgsql/archive}"
+PGDATA_DIR="${PGDATA_DIR:-/var/lib/pgsql/data}"
 PATRONI_API="${PATRONI_API:-}"   # empty = auto-detect (127.0.0.1, then this node's IPv4 addresses); or set PATRONI_API=http://<ip>:8008/cluster
 CURL_OPTS="${CURL_OPTS:-}"                                         # e.g. CURL_OPTS=-k for self-signed HTTPS
-LOG_FILE="/var/log/pg_wal_archive_cleanup.log"
-LOCK_FILE="/var/run/pg_wal_archive_cleanup.lock"
+LOG_FILE="${LOG_FILE:-/var/log/pg_wal_archive_cleanup.log}"
+LOCK_FILE="${LOCK_FILE:-/var/run/pg_wal_archive_cleanup.lock}"
 
 DRY_RUN="${DRY_RUN:-1}"
 
@@ -55,15 +58,59 @@ is_valid_wal_name()
     [[ "$1" =~ ^[0-9A-Fa-f]{24}$ ]]
 }
 
-# Never delete files younger than MIN_AGE_HOURS.
-# Prints the newest WAL file in the archive that is older than the
-# age threshold (empty output if there is none).
-newest_old_enough_wal()
+# pg_archivecleanup ignores the timeline part (first 8 hex chars) when it
+# decides what to delete, so boundaries here are built to be safe under
+# BOTH orderings: lowest timeline AND lowest log/segment of all candidates.
+combine_boundaries()
+{
+    local a="${1^^}" b="${2^^}" tl pos
+
+    tl="${a:0:8}"
+    [[ "${b:0:8}" < "$tl" ]] && tl="${b:0:8}"
+
+    pos="${a:8}"
+    [[ "${b:8}" < "$pos" ]] && pos="${b:8}"
+
+    echo "${tl}${pos}"
+}
+
+# Boundary that protects every file younger than MIN_AGE_HOURS:
+# lowest timeline and lowest log/segment among those young files.
+# Prints nothing when there are no young files (or MIN_AGE_HOURS=0).
+youngest_guard_wal()
 {
     find "$ARCHIVE_DIR" -maxdepth 1 -type f \
         -regextype posix-extended -regex '.*/[0-9A-Fa-f]{24}' \
-        -mmin +"$((MIN_AGE_HOURS * 60))" -printf '%f\n' 2>/dev/null |
-        tr 'a-f' 'A-F' | sort | tail -n 1
+        -mmin -"$((MIN_AGE_HOURS * 60))" -printf '%f\n' 2>/dev/null |
+        tr 'a-f' 'A-F' |
+        awk '{
+            tl = substr($0, 1, 8); pos = substr($0, 9, 16)
+            if (minpos == "" || pos < minpos) minpos = pos
+            if (mintl == "" || tl < mintl) mintl = tl
+        } END { if (minpos != "") print mintl minpos }'
+}
+
+# Apply the minimum-age guard to a proposed boundary.
+# Sets FINAL_BOUNDARY (never empty).
+apply_age_guard()
+{
+    local proposed="${1^^}" guard
+
+    guard=$(youngest_guard_wal)
+
+    if [ -z "$guard" ]; then
+        FINAL_BOUNDARY="$proposed"
+        log "Age guard (${MIN_AGE_HOURS}h): no younger files to protect; boundary stays $FINAL_BOUNDARY"
+        return
+    fi
+
+    FINAL_BOUNDARY=$(combine_boundaries "$proposed" "$guard")
+
+    if [ "$FINAL_BOUNDARY" != "$proposed" ]; then
+        log "Age guard (${MIN_AGE_HOURS}h) lowered boundary: $proposed -> $FINAL_BOUNDARY"
+    else
+        log "Age guard (${MIN_AGE_HOURS}h) not limiting; boundary stays $FINAL_BOUNDARY"
+    fi
 }
 
 # Run pg_archivecleanup (dry or live) for a given boundary WAL.
@@ -86,30 +133,6 @@ run_cleanup()
         rc=${PIPESTATUS[0]}
         [ "$rc" -eq 0 ] || fail "pg_archivecleanup failed."
         log "Cleanup completed successfully."
-    fi
-}
-
-# Apply the minimum-age guard to a proposed boundary.
-# Sets FINAL_BOUNDARY (empty = nothing safe to delete).
-apply_age_guard()
-{
-    local proposed="${1^^}"
-    local age_boundary
-
-    age_boundary=$(newest_old_enough_wal)
-
-    if [ -z "$age_boundary" ]; then
-        FINAL_BOUNDARY=""
-        log "No WAL files older than ${MIN_AGE_HOURS}h in archive. Nothing to clean."
-        return
-    fi
-
-    if [[ "$age_boundary" < "$proposed" ]]; then
-        FINAL_BOUNDARY="$age_boundary"
-        log "Age guard (${MIN_AGE_HOURS}h) lowered boundary: $proposed -> $FINAL_BOUNDARY"
-    else
-        FINAL_BOUNDARY="$proposed"
-        log "Age guard (${MIN_AGE_HOURS}h) not limiting; boundary stays $FINAL_BOUNDARY"
     fi
 }
 
@@ -151,9 +174,20 @@ fetch_cluster_json()
 
 [ -d "$ARCHIVE_DIR" ] || fail "Archive directory does not exist: $ARCHIVE_DIR"
 
-for cmd in psql pg_archivecleanup pg_controldata flock find sort; do
+for cmd in sudo psql pg_archivecleanup pg_controldata flock find sort awk readlink; do
     command -v "$cmd" >/dev/null 2>&1 || fail "$cmd command not found."
 done
+
+# Refuse to run if the archive directory is, or is inside, the live data directory.
+ARCHIVE_REAL=$(readlink -f "$ARCHIVE_DIR")
+PGDATA_REAL=$(readlink -f "$PGDATA_DIR")
+
+[ -n "$ARCHIVE_REAL" ] && [ "$ARCHIVE_REAL" != "/" ] ||
+    fail "Refusing to use archive directory: '$ARCHIVE_DIR'"
+
+case "$ARCHIVE_REAL/" in
+    "$PGDATA_REAL"/*) fail "Archive directory ($ARCHIVE_REAL) is inside PGDATA ($PGDATA_REAL). Refusing to run." ;;
+esac
 
 case "$DRY_RUN" in
     0|1) ;;
@@ -289,7 +323,8 @@ replicas = [
 if not replicas:
     err("No replica members found in Patroni cluster. Primary cleanup skipped.")
 
-best = None
+tls = []
+poss = []
 details = []
 
 for m in replicas:
@@ -322,11 +357,13 @@ for m in replicas:
 
     details.append("%s(tl=%d lsn=%s lag=%d)" % (name, tl_i, lsn, lag_i))
 
-    key = (tl_i, pos)
-    if best is None or key < best:
-        best = key
+    tls.append(tl_i)
+    poss.append(pos)
 
-tl_i, pos = best
+# pg_archivecleanup ignores the timeline when comparing, so take the
+# lowest position AND the lowest timeline across all replicas.
+tl_i = min(tls)
+pos = min(poss)
 
 segs_per_log = (2 ** 32) // segsize
 abs_seg = pos // segsize - keep
