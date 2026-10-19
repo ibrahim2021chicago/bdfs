@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PostgreSQL WAL archive cleanup (hardened version)
+# PostgreSQL WAL archive cleanup (hardened version, v3)
 # Designed for Patroni PostgreSQL HA:
 #   cgnmssql01 = Primary/Leader
 #   munmssql01 = Standby/Replica
@@ -20,9 +20,14 @@
 
 set -u
 
+# Start from / so "sudo -u postgres" never hits a permission error
+# on the caller's home directory.
+cd / || exit 1
+
 ARCHIVE_DIR="/var/lib/pgsql/archive"
 PGDATA_DIR="/var/lib/pgsql/data"
-PATRONI_API="http://127.0.0.1:8008/cluster"
+PATRONI_API="${PATRONI_API:-http://127.0.0.1:8008/cluster}"   # override: PATRONI_API=http://<leader-ip>:8008/cluster
+CURL_OPTS="${CURL_OPTS:-}"                                         # e.g. CURL_OPTS=-k for self-signed HTTPS
 LOG_FILE="/var/log/pg_wal_archive_cleanup.log"
 LOCK_FILE="/var/run/pg_wal_archive_cleanup.lock"
 
@@ -215,7 +220,7 @@ else
     # Get Patroni cluster information.
     # --------------------------------------------------------
 
-    CLUSTER_JSON=$(curl -fsS --max-time 10 "$PATRONI_API") ||
+    CLUSTER_JSON=$(curl -fsS $CURL_OPTS --max-time 10 "$PATRONI_API") ||
         fail "Unable to obtain Patroni cluster information."
 
     # Evaluate ALL replicas (role replica / sync_standby):
